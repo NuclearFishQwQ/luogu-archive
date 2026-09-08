@@ -293,7 +293,8 @@ def crawl_user_manual(uid: int, profile_done: bool = False) -> None:
                 )
             ),
         )
-        # 不再自动级联犇犇、文章或剪贴板；这些对象由用户分别指定。
+        # 主页成功后再派第二阶段，令两次请求分别取得资源并执行各自冷却。
+        crawl_user_manual.send(uid, True)
         return
     _run_or_defer(
         "crawl_user_manual",

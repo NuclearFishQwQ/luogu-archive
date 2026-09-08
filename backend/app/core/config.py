@@ -100,6 +100,8 @@ class Settings(BaseSettings):
     # 社区规范要求保存站只处理用户明确指定的对象。默认关闭所有定时发现、
     # 批量扫描和自动级联；保留配置项，后续调整方案时无需恢复已删除代码。
     CRAWLER_PROACTIVE_ENABLED: bool = False
+    # 暂停展示但保留实现的高维护量归档模块；改为 True 即可重新注册 API。
+    EXTENDED_ARCHIVE_MODULES_ENABLED: bool = False
     CRAWLER_FEED_SCHEDULE_UTILIZATION: float = 0.8
     CRAWLER_FEED_BACKLOG_WINDOWS: int = 2
     CRAWLER_BREAKER_COOLDOWN_SEC: int = 300

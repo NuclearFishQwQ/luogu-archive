@@ -289,6 +289,11 @@ async def _try_get_pending(content_type: str, ident: str) -> str | None:
 @router.post("/save", response_model=SaveResp)
 async def save(req: SaveReq, request: Request) -> SaveResp:
     ip = get_client_ip(request)
+    if (
+        not settings.EXTENDED_ARCHIVE_MODULES_ENABLED
+        and req.content_type in {"problem", "problem_solution"}
+    ):
+        raise NotFoundError("该保存类型当前未开放")
     if req.content_type == "article":
         ident = _normalize_article_ident(req.id)
     elif req.content_type == "discuss":
