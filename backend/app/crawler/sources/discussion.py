@@ -527,12 +527,12 @@ def _enqueue_next_page(
     trigger: str,
     chain_token: str,
 ) -> None:
-    from app.tasks.actors.crawl import crawl_discussion, crawl_discussion_bg
+    from app.tasks.actors.crawl import crawl_discussion_bg
 
-    manual_batch = trigger.startswith("manual")
-    target = crawl_discussion if manual_batch else crawl_discussion_bg
-    child_trigger = "manual_followup" if manual_batch else trigger
-    target.send(discussion_id, page, child_trigger, True, chain_token)
+    # 用户指定对象时只让第一页占用高优先级，后续分页统一回到普通队列。
+    # 否则数千页的讨论会不断补充高优先级任务，使普通队列永久得不到执行。
+    child_trigger = "manual_followup" if trigger.startswith("manual") else trigger
+    crawl_discussion_bg.send(discussion_id, page, child_trigger, True, chain_token)
     log.info(
         "crawl_discussion.enqueued_next_page",
         discussion_id=discussion_id,
