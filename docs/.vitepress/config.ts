@@ -14,6 +14,10 @@ export default defineConfig({
   srcDir: './content',
   cleanUrls: true,
   appearance: true,
+  vite: {
+    // 文档站独立使用样式配置，避免向上读取主项目的配置文件。
+    css: { postcss: {} },
+  },
   head: [
     ['link', { rel: 'icon', href: '/docs/favicon.png' }],
     ['meta', { name: 'robots', content: 'noindex, nofollow, noarchive' }],
