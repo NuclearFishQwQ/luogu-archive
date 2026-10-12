@@ -41,6 +41,27 @@ export default defineConfig({
         items: [
           { text: '基础 Markdown', link: '/' },
           { text: '公式与内容块', link: '/examples/formatting' },
+          { text: '快速上手', link: '/quick-start' },
+          { text: '常见问题', link: '/faq' },
+        ],
+      },
+      // 指南和政策分组默认收起，点击小三角即可展开。
+      {
+        text: '插件指南',
+        collapsed: true,
+        items: [
+          { text: '上传须知', link: '/plugin/upload' },
+          { text: '推荐须知', link: '/plugin/recommend' },
+          { text: '使用须知', link: '/plugin/usage' },
+        ],
+      },
+      {
+        text: '政策与声明',
+        collapsed: true,
+        items: [
+          { text: '隐私协议', link: '/policies/privacy' },
+          { text: '免责声明', link: '/policies/disclaimer' },
+          { text: '数据移除政策', link: '/policies/data-removal' },
         ],
       },
     ],
