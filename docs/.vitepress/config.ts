@@ -37,10 +37,9 @@ export default defineConfig({
     ],
     sidebar: [
       {
-        text: '示例',
+        text: '开始使用',
         items: [
-          { text: '基础 Markdown', link: '/' },
-          { text: '公式与内容块', link: '/examples/formatting' },
+          { text: '欢迎页', link: '/' },
           { text: '快速上手', link: '/quick-start' },
           { text: '常见问题', link: '/faq' },
         ],
