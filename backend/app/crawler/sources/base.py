@@ -18,6 +18,7 @@ from app.core.db import db_session
 from app.core.locks import DistributedLock, lock_key
 from app.core.logging import get_logger
 from app.core.redis_client import get_redis
+from app.core.recent_tasks import cache_recent_task
 from app.models._common import CrawlTaskStatus, CrawlTrigger, utcnow
 from app.models.task import CrawlTask
 
@@ -67,6 +68,7 @@ async def record_task_start(
         )
         session.add(t)
         await session.commit()
+        await cache_recent_task(t)
         return t.id
 
 
@@ -89,6 +91,7 @@ async def record_task_done(
         t.duration_ms = duration_ms
         t.finished_at = utcnow()
         await session.commit()
+        await cache_recent_task(t)
 
 
 def trigger_from(str_val: str) -> CrawlTrigger:

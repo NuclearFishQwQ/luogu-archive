@@ -65,3 +65,6 @@ test/
 # 开发临时文件
 .devcontainer
 .venv
+
+# Local shadcn source cache
+/vendor/shadcn/
