@@ -25,6 +25,7 @@ from app.core.crawl_policy import automatic_cascade_allowed, crawl_trigger_allow
 from app.core.exceptions import CrawlerError
 from app.core.logging import get_logger
 from app.core.redis_client import get_redis
+from app.core.site_totals import increment_site_totals
 from app.crawler.http import fetch_anon
 from app.crawler.lentille import data_from_lentille
 from app.crawler.nodes import NodeKind, get_default_node
@@ -114,9 +115,11 @@ async def _crawl_inner(article_id: str, *, trigger: str) -> None:
 
         async with db_session() as session:
             await ensure_content_visible(session, "article", article_id, fields.get("author_uid"))
-            await _upsert_article(session, article_id, fields, node_id=node.node_id)
+            created = await _upsert_article(session, article_id, fields, node_id=node.node_id)
             await _upsert_author_brief(session, fields.get("author_raw"))
             await session.commit()
+            if created:
+                await increment_site_totals(articles=1)
 
         # 作者用户若 author_raw 里信息不全（比如缺 slogan/introduction），
         # 额外派一次完整用户爬取（带去重锁，不会重复）
@@ -152,7 +155,7 @@ async def _upsert_article(
     fields: dict[str, Any],
     *,
     node_id: str,
-) -> None:
+) -> bool:
     now = utcnow()
     content_hash = sha256_hex(fields["content_md"])
 
@@ -179,7 +182,7 @@ async def _upsert_article(
         session.add(v)
         await session.flush()
         art.current_version_id = v.id
-        return
+        return True
 
     # 已存在：判重
     q = select(ArticleVersion).where(
@@ -191,7 +194,7 @@ async def _upsert_article(
         # 管理员提示与正文独立变化，即使正文未改也必须同步当前提示。
         existing.admin_note = fields.get("admin_note")
         existing.last_crawled_at = now
-        return
+        return False
 
     # 内容变化 → 新版本
     v = ArticleVersion(
@@ -209,6 +212,7 @@ async def _upsert_article(
     existing.admin_note = fields.get("admin_note")
     existing.current_version_id = v.id
     existing.last_crawled_at = now
+    return False
 
 
 async def _upsert_author_brief(session: AsyncSession, author: dict | None) -> None:

@@ -16,6 +16,7 @@ from app.core.crawl_policy import crawl_trigger_allowed
 from app.core.exceptions import CrawlerError
 from app.core.logging import get_logger
 from app.core.redis_client import get_redis
+from app.core.site_totals import increment_site_totals
 from app.crawler.http import fetch_anon
 from app.crawler.lentille import (
     current_data_from_injection,
@@ -119,8 +120,10 @@ async def _crawl_inner(paste_id: str, *, trigger: str) -> None:
 
         async with db_session() as session:
             await ensure_content_visible(session, "paste", paste_id, fields.get("author_uid"))
-            await _upsert_paste(session, paste_id, fields, node_id=node.node_id)
+            created = await _upsert_paste(session, paste_id, fields, node_id=node.node_id)
             await session.commit()
+            if created:
+                await increment_site_totals(pastes=1)
 
         dur = int((_t.monotonic() - start) * 1000)
         await record_task_done(
@@ -147,7 +150,7 @@ async def _upsert_paste(
     fields: dict[str, Any],
     *,
     node_id: str,
-) -> None:
+) -> bool:
     now = utcnow()
     content_hash = sha256_hex(fields["content_md"])
 
@@ -171,7 +174,7 @@ async def _upsert_paste(
         session.add(v)
         await session.flush()
         p.current_version_id = v.id
-        return
+        return True
 
     q = select(PasteVersion).where(
         PasteVersion.paste_id == paste_id,
@@ -179,7 +182,7 @@ async def _upsert_paste(
     )
     if (await session.execute(q)).scalar_one_or_none() is not None:
         existing.last_crawled_at = now
-        return
+        return False
 
     v = PasteVersion(
         paste_id=paste_id,
@@ -193,3 +196,4 @@ async def _upsert_paste(
     existing.author_uid = fields.get("author_uid") or existing.author_uid
     existing.current_version_id = v.id
     existing.last_crawled_at = now
+    return False

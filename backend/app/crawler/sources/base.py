@@ -19,6 +19,7 @@ from app.core.locks import DistributedLock, lock_key
 from app.core.logging import get_logger
 from app.core.redis_client import get_redis
 from app.core.recent_tasks import cache_recent_task
+from app.core.site_totals import increment_site_totals
 from app.models._common import CrawlTaskStatus, CrawlTrigger, utcnow
 from app.models.task import CrawlTask
 
@@ -68,6 +69,7 @@ async def record_task_start(
         )
         session.add(t)
         await session.commit()
+        await increment_site_totals(crawl_tasks=1)
         await cache_recent_task(t)
         return t.id
 
