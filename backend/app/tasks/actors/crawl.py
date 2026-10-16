@@ -55,6 +55,13 @@ from app.services.takedown_probe import run_takedown_probe
 
 log = get_logger(__name__)
 
+
+@actor(queue_name=QUEUE_CRAWL_HI, resources=AUTH_CN, max_retries=0)
+def crawl_theme(theme_id: int, token: str) -> None:
+    """用户指定主题，复用国内站域名门和账号冷却，不触发其他发现。"""
+    from app.crawler.sources.theme import crawl_one
+    run_async(crawl_one(theme_id, token))
+
 _RETRY = {
     "max_retries": 3,
     "min_backoff": 5_000,
