@@ -274,8 +274,9 @@ async def _try_merge_or_enqueue(
 
     if task_id is None:
         task_id = msg.message_id
-    # 挂 pending 标记，TTL 5 分钟（爬完没这么久，但防止卡死）
-    await redis.setex(key, 300, task_id)
+    # 讨论目录合并 30 秒，其他保存目标合并 60 秒；重复点击不续期。
+    pending_ttl = 30 if content_type == "discuss_list" else 60
+    await redis.setex(key, pending_ttl, task_id)
     return task_id, merged_existing
 
 
