@@ -30,6 +30,7 @@ from app.crawler.http import fetch_anon
 from app.crawler.lentille import data_from_lentille
 from app.crawler.nodes import NodeKind, get_default_node
 from app.crawler.sources.base import (
+    parse_source_time,
     record_task_done,
     record_task_start,
     sha256_hex,
@@ -86,6 +87,7 @@ def _extract_article_fields(data: dict) -> dict[str, Any]:
                 "content_md": str(content),
                 "author_uid": int(author_uid) if author_uid else None,
                 "author_raw": author_raw,
+                "source_time": parse_source_time(node.get("time")),
                 "admin_note": (
                     str(node["adminNote"])
                     if node.get("adminNote") is not None
@@ -166,6 +168,7 @@ async def _upsert_article(
             author_uid=fields.get("author_uid"),
             title=fields["title"][:500],
             admin_note=fields.get("admin_note"),
+            source_time=fields.get("source_time"),
             first_crawled_at=now,
             last_crawled_at=now,
         )
@@ -183,6 +186,9 @@ async def _upsert_article(
         await session.flush()
         art.current_version_id = v.id
         return True
+
+    if fields.get("source_time") is not None:
+        existing.source_time = fields["source_time"]
 
     # 已存在：判重
     q = select(ArticleVersion).where(

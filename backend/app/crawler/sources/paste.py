@@ -25,6 +25,7 @@ from app.crawler.lentille import (
 )
 from app.crawler.nodes import NodeKind, get_default_node
 from app.crawler.sources.base import (
+    parse_source_time,
     record_task_done,
     record_task_start,
     sha256_hex,
@@ -85,6 +86,7 @@ def _extract_paste_fields(kind: str, data: dict) -> dict[str, Any]:
         return {
             "content_md": str(content),
             "author_uid": int(user.get("uid")) if user.get("uid") else None,
+            "source_time": parse_source_time(paste.get("time")),
         }
 
     # kind == "lentille"：按常见位置遍历
@@ -100,6 +102,7 @@ def _extract_paste_fields(kind: str, data: dict) -> dict[str, Any]:
         return {
             "content_md": str(content),
             "author_uid": int(author_uid) if author_uid else None,
+            "source_time": parse_source_time(candidate.get("time")),
         }
     raise CrawlerError(f"无法从 data 中提取剪贴板字段，可见 keys: {list(inner.keys())}")
 
@@ -159,6 +162,7 @@ async def _upsert_paste(
         p = Paste(
             paste_id=paste_id,
             author_uid=fields.get("author_uid"),
+            source_time=fields.get("source_time"),
             first_crawled_at=now,
             last_crawled_at=now,
         )
@@ -175,6 +179,9 @@ async def _upsert_paste(
         await session.flush()
         p.current_version_id = v.id
         return True
+
+    if fields.get("source_time") is not None:
+        existing.source_time = fields["source_time"]
 
     q = select(PasteVersion).where(
         PasteVersion.paste_id == paste_id,

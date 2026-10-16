@@ -716,7 +716,7 @@ async def get_discussion(
         author=users.get(discussion.author_uid) if discussion.author_uid else None,
         forum_name=discussion.forum_name,
         source_time=discussion.source_time,
-        crawled_at=version.crawled_at,
+        crawled_at=discussion.last_crawled_at,
         source_reply_count=discussion.observed_reply_count,
         stored_reply_count=stored_count,
         page=page,
