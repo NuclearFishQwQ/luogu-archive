@@ -17,7 +17,7 @@ title: 欢迎页
 | 使用站内插件 | [插件使用须知](/plugin/usage) |
 | 上传、维护插件 | [上传须知](/plugin/upload) |
 | 让插件获得更多曝光 | [推荐须知](/plugin/recommend) |
-| 删除 / 隐藏我的内容 | [数据移除政策](/policies/data-removal)（绑定账号后即时生效） |
+| 删除 / 隐藏我的内容 | [数据移除政策](/policies/data-removal) |
 | 投诉侵权、了解责任边界 | [免责声明](/policies/disclaimer) · [数据移除政策](/policies/data-removal) |
 | 了解数据如何被收集与使用 | [隐私协议](/policies/privacy) |
 
