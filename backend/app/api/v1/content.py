@@ -7,7 +7,7 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Body, Depends, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -582,26 +582,20 @@ async def list_discussions(
 
 
 @router.post("/discuss/refresh", response_model=DiscussionRefreshResponse)
-async def refresh_discussions() -> DiscussionRefreshResponse:
-    """提交一次讨论区首页发现任务；全站共享短冷却以避免重复抓取。"""
-    from app.core.redis_client import get_redis
-    from app.tasks.actors.crawl import discover_from_discuss_hi
+async def refresh_discussions(
+    request: Request,
+    captcha_token: str | None = Body(None, embed=True),
+) -> DiscussionRefreshResponse:
+    """兼容旧入口，统一使用保存接口的合并、IP 限流与人机验证。"""
+    from app.api.v1.save import SaveReq, save
 
-    redis = get_redis()
-    cooldown_key = "manual:discussion_discovery"
-    queued = await redis.set(cooldown_key, "1", ex=60, nx=True)
-    if not queued:
-        retry_after = max(1, int(await redis.ttl(cooldown_key)))
-        return DiscussionRefreshResponse(
-            queued=False,
-            message="更新任务刚刚提交过，请稍后再试",
-            retry_after=retry_after,
-        )
-
-    discover_from_discuss_hi.send("manual")
+    result = await save(
+        SaveReq(content_type="discuss_list", id="all", captcha_token=captcha_token),
+        request,
+    )
     return DiscussionRefreshResponse(
         queued=True,
-        message="更新任务已提交",
+        message="已合并到进行中的任务" if result.merged else "更新任务已提交",
     )
 
 
