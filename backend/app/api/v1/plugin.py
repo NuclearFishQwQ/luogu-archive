@@ -24,6 +24,7 @@ from app.models.luogu_user import LuoguUser
 from app.models.plugin import (
     Plugin,
     PluginApplication,
+    PluginComment,
     PluginReport,
     PluginTag,
     PluginTagLink,
@@ -64,6 +65,22 @@ async def _ensure_plugin_article_visible(
     )
 
 
+async def _get_commentable_plugin(
+    db: AsyncSession,
+    article_id: str,
+    user: SiteUser | None,
+) -> Plugin:
+    await _ensure_plugin_article_visible(db, article_id)
+    plugin = (
+        await db.execute(select(Plugin).where(Plugin.article_id == article_id))
+    ).scalar_one_or_none()
+    if plugin is None or (
+        not plugin.is_listed and (user is None or user.id != plugin.owner_user_id)
+    ):
+        raise NotFoundError("插件不存在或尚未公开")
+    return plugin
+
+
 class PublishApplicationReq(BaseModel):
     article_id: str = Field(..., min_length=1, max_length=16, pattern=r"^[A-Za-z0-9]+$")
     snapshot: PluginSnapshot
@@ -76,6 +93,10 @@ class ReasonReq(BaseModel):
 class ReportReq(BaseModel):
     report_type: str
     description: str = Field(..., min_length=10, max_length=5000)
+
+
+class PluginCommentReq(BaseModel):
+    content: str = Field(..., min_length=1, max_length=2000)
 
 
 def _code_download_response(code: str, filename: str) -> StreamingResponse:
@@ -425,6 +446,93 @@ async def plugin_detail(
             "tags": await _tags_by_ids(db, pending_snapshot.tag_ids),
         } if pending and pending_snapshot else None),
     }
+
+
+@router.get("/{article_id}/comments")
+async def list_plugin_comments(
+    article_id: str,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=50),
+    user: SiteUser | None = Depends(get_optional_site_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    plugin = await _get_commentable_plugin(db, article_id, user)
+    total = int(await db.scalar(
+        select(func.count()).select_from(PluginComment).where(
+            PluginComment.plugin_id == plugin.id
+        )
+    ) or 0)
+    rows = (await db.execute(
+        select(PluginComment, SiteUser.display_name, SiteUser.avatar_url)
+        .join(SiteUser, SiteUser.id == PluginComment.user_id)
+        .where(PluginComment.plugin_id == plugin.id)
+        .order_by(desc(PluginComment.created_at), desc(PluginComment.id))
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    )).all()
+    return {
+        "items": [{
+            "id": comment.id,
+            "user_id": comment.user_id,
+            "display_name": display_name,
+            "avatar_url": avatar_url,
+            "content": comment.content,
+            "created_at": comment.created_at.isoformat(),
+            "is_mine": bool(user and user.id == comment.user_id),
+        } for comment, display_name, avatar_url in rows],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+    }
+
+
+@router.post("/{article_id}/comments")
+async def create_plugin_comment(
+    article_id: str,
+    body: PluginCommentReq,
+    request: Request,
+    user: SiteUser = Depends(get_current_site_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    content = body.content.strip()
+    if not content:
+        raise ValidationError("评论内容不能为空")
+    plugin = await _get_commentable_plugin(db, article_id, user)
+    await _write_limit(user, request, "comment", limit=10)
+    comment = PluginComment(plugin_id=plugin.id, user_id=user.id, content=content)
+    db.add(comment)
+    await db.commit()
+    await db.refresh(comment)
+    return {
+        "id": comment.id,
+        "user_id": user.id,
+        "display_name": user.display_name,
+        "avatar_url": user.avatar_url,
+        "content": comment.content,
+        "created_at": comment.created_at.isoformat(),
+        "is_mine": True,
+    }
+
+
+@router.delete("/{article_id}/comments/{comment_id}")
+async def delete_plugin_comment(
+    article_id: str,
+    comment_id: int,
+    user: SiteUser = Depends(get_current_site_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    await _ensure_plugin_article_visible(db, article_id)
+    plugin = (
+        await db.execute(select(Plugin).where(Plugin.article_id == article_id))
+    ).scalar_one_or_none()
+    comment = await db.get(PluginComment, comment_id)
+    if plugin is None or comment is None or comment.plugin_id != plugin.id:
+        raise NotFoundError("评论不存在")
+    if comment.user_id != user.id:
+        raise ForbiddenError("只能删除自己的评论")
+    await db.delete(comment)
+    await db.commit()
+    return {"message": "评论已删除"}
 
 
 @router.post("/{article_id}/claim")

@@ -53,6 +53,7 @@ from app.models.contest import Contest, ContestParticipant, ContestProblem
 from app.models.plugin import (
     Plugin,
     PluginApplication,
+    PluginComment,
     PluginReport,
     PluginTag,
     PluginTagLink,
@@ -101,7 +102,7 @@ __all__ = [
     "PluginVersion",
     "SaveRequest",
     "SiteAnnouncement",
-    "SiteComment",
+    "PluginComment",
     "SiteSession",
     "SiteUser",
     "SiteUserFollow",

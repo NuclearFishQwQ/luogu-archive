@@ -138,6 +138,25 @@ class PluginUsageEvent(Base):
     )
 
 
+class PluginComment(Base, TimestampMixin):
+    """本站用户在插件详情页发布的评论。"""
+
+    __tablename__ = "plugin_comments"
+    __table_args__ = (
+        Index("ix_plugin_comments_plugin_time", "plugin_id", "created_at"),
+        Index("ix_plugin_comments_user_time", "user_id", "created_at"),
+    )
+
+    id: Mapped[int] = BigPKColumn()
+    plugin_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("plugins.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("site_users.id", ondelete="CASCADE"), nullable=False
+    )
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+
+
 class PluginTag(Base, TimestampMixin):
     """管理员维护的固定功能标签。"""
 

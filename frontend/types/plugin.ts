@@ -45,6 +45,16 @@ export interface PluginVersion {
   copy_count?: number
 }
 
+export interface PluginComment {
+  id: number
+  user_id: number
+  display_name: string
+  avatar_url: string | null
+  content: string
+  created_at: string
+  is_mine: boolean
+}
+
 export interface PluginDetail {
   id?: number
   article_id: string

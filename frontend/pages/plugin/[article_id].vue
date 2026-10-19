@@ -300,6 +300,8 @@ useHead(() => ({ title: `${displayName.value} - 插件广场` }))
       </section>
     </section>
 
+    <PluginComments v-if="!detail.pending_only" :article-id="articleId" />
+
     <footer class="detail-footer">
       <span>文章编号 {{ articleId }}</span>
       <div>
